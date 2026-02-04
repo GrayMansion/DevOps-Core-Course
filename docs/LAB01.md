@@ -60,15 +60,15 @@ curl -s http://127.0.0.1:5000/health | jq
 
 ### Output from CMD
 
-![01](screenshots/lab1_01_cmd_output.png)
+![01](screenshots/lab01/lab1_01_cmd_output.png)
 
 ### Endpoints display on localhost/docs
 
-![02](screenshots/lab1_02_fastapi_docs_endpoints.png)
+![02](screenshots/lab01/lab1_02_fastapi_docs_endpoints.png)
 
 ### Output of Endpoints
 
-![03](screenshots/lab1_03_fastapi_endpoints_showcase.png)
+![03](screenshots/lab01/lab1_03_fastapi_endpoints_showcase.png)
 
 ## GitHub Community
 

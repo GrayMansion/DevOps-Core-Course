@@ -38,3 +38,26 @@ GET /health — Health check
 | HOST     | 0.0.0.0 | Bind address                            |
 | PORT     | 5000    | Listening port                          |
 | DEBUG    | False   | If true, enables reload + debug logging |
+
+## Docker
+
+This project can be built and run as a Docker container (same API behavior as local run).
+
+### Build the image
+```bash
+docker build -t <image_name>:<tag> -f app_python/Dockerfile app_python
+```
+
+### Run the container
+The app listens on container port `<container_port>` (default is `5000`), so you publish it to a host port:
+
+```bash
+docker run --rm -p <host_port>:<container_port> <image_name>:<tag>
+```
+
+### Pull from Docker Hub
+```bash
+docker pull graymansion/devops-info-service:lab02
+docker run --rm -p <host_port>:<container_port> graymansion/devops-info-service:lab02
+```
+
