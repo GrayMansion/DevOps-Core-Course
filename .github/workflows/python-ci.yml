@@ -84,6 +84,6 @@ jobs:
         with:
           snyk_api_key: ${{ secrets.SNYK_TOKEN }}
           path_to_dependency_file: app_python/requirements.txt
-          upload_sarif: true
+          upload_sarif: false
           snyk_github_integration_token: ${{ github.token }}
           repository: ${{ github.repository }}
