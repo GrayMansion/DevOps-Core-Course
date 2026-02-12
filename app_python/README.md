@@ -1,6 +1,9 @@
 # DevOps Info Service (FastAPI)
 
 ## Overview
+
+[![python-ci](https://github.com/GrayMansion/DevOps-Core-Course/actions/workflows/python-ci.yml/badge.svg)](https://github.com/GrayMansion/DevOps-Core-Course/actions/workflows/python-ci.yml)
+
 A small web service that exposes system/runtime information and a health check endpoint.
 
 ## Prerequisites
