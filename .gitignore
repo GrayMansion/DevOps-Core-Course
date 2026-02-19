@@ -1,3 +1,22 @@
 .secrets
 .env
 .env.*
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.auto.tfvars
+crash.log
+crash.*.log
+
+# Pulumi
+pulumi/venv/
+pulumi/__pycache__/
+Pulumi.*.yaml
+
+# Credentials
+*.pem
+*.key
