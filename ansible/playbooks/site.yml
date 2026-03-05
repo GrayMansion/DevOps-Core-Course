@@ -1,9 +1,9 @@
 ---
 - name: Full site deployment
   hosts: webservers
-  become: yes
+  become: true
 
   roles:
     - common
     - docker
-    - app_deploy
+    - web_app
