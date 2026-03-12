@@ -3,6 +3,7 @@ DevOps Info Service (Lab 1)
 FastAPI implementation.
 """
 
+import json
 import logging
 import os
 import platform
@@ -20,14 +21,43 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5000"))
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+LOG_FORMAT = os.getenv("LOG_FORMAT", "text")  # "json" for structured logging
+
+
+# -------------------------
+# JSON Log Formatter
+# -------------------------
+class JSONFormatter(logging.Formatter):
+    """Outputs log records as single-line JSON objects."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        log_entry = {
+            "timestamp": datetime.now(timezone.utc)
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info and record.exc_info[0] is not None:
+            log_entry["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_entry)
+
 
 # -------------------------
 # Logging
 # -------------------------
-logging.basicConfig(
-    level=logging.DEBUG if DEBUG else logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+_log_level = logging.DEBUG if DEBUG else logging.INFO
+_handler = logging.StreamHandler()
+
+if LOG_FORMAT == "json":
+    _handler.setFormatter(JSONFormatter())
+else:
+    _handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
+
+logging.basicConfig(level=_log_level, handlers=[_handler])
 logger = logging.getLogger("devops-info-service")
 
 # -------------------------
@@ -99,8 +129,16 @@ async def unhandled_exception_handler(_: Request, exc: Exception):
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger.info("Request: %s %s", request.method, request.url.path)
-    return await call_next(request)
+    client_ip = request.client.host if request.client else "unknown"
+    response = await call_next(request)
+    logger.info(
+        "method=%s path=%s status=%d client=%s",
+        request.method,
+        request.url.path,
+        response.status_code,
+        client_ip,
+    )
+    return response
 
 
 @app.get("/")
