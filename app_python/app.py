@@ -8,11 +8,13 @@ import logging
 import os
 import platform
 import socket
+import time
 from datetime import datetime, timezone
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # -------------------------
@@ -65,6 +67,35 @@ logger = logging.getLogger("devops-info-service")
 # -------------------------
 app = FastAPI(title="DevOps Info Service", version="1.0.0")
 START_TIME = datetime.now(timezone.utc)
+
+HTTP_REQUESTS_TOTAL = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status_code"],
+)
+
+HTTP_REQUEST_DURATION_SECONDS = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint", "status_code"],
+)
+
+HTTP_REQUESTS_IN_PROGRESS = Gauge(
+    "http_requests_in_progress",
+    "HTTP requests currently being processed",
+    ["method", "endpoint"],
+)
+
+ENDPOINT_CALLS = Counter(
+    "devops_info_endpoint_calls_total",
+    "Total endpoint calls in devops info service",
+    ["endpoint"],
+)
+
+SYSTEM_INFO_DURATION_SECONDS = Histogram(
+    "devops_info_system_collection_seconds",
+    "System info collection duration in seconds",
+)
 
 
 def iso_utc_now() -> str:
@@ -128,6 +159,33 @@ async def unhandled_exception_handler(_: Request, exc: Exception):
 
 
 @app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    method = request.method
+    endpoint = request.url.path
+    start = time.perf_counter()
+    status_code = 500
+
+    HTTP_REQUESTS_IN_PROGRESS.labels(method=method, endpoint=endpoint).inc()
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        duration_seconds = time.perf_counter() - start
+        HTTP_REQUESTS_TOTAL.labels(
+            method=method,
+            endpoint=endpoint,
+            status_code=str(status_code),
+        ).inc()
+        HTTP_REQUEST_DURATION_SECONDS.labels(
+            method=method,
+            endpoint=endpoint,
+            status_code=str(status_code),
+        ).observe(duration_seconds)
+        HTTP_REQUESTS_IN_PROGRESS.labels(method=method, endpoint=endpoint).dec()
+
+
+@app.middleware("http")
 async def log_requests(request: Request, call_next):
     client_ip = request.client.host if request.client else "unknown"
     response = await call_next(request)
@@ -143,7 +201,10 @@ async def log_requests(request: Request, call_next):
 
 @app.get("/")
 async def index(request: Request) -> dict:
+    ENDPOINT_CALLS.labels(endpoint="/").inc()
     uptime = get_uptime()
+    with SYSTEM_INFO_DURATION_SECONDS.time():
+        system_info = get_system_info()
 
     return {
         "service": {
@@ -152,7 +213,7 @@ async def index(request: Request) -> dict:
             "description": "DevOps course info service",
             "framework": "FastAPI",
         },
-        "system": get_system_info(),
+        "system": system_info,
         "runtime": {
             "uptime_seconds": uptime["seconds"],
             "uptime_human": uptime["human"],
@@ -168,12 +229,14 @@ async def index(request: Request) -> dict:
         "endpoints": [
             {"path": "/", "method": "GET", "description": "Service information"},
             {"path": "/health", "method": "GET", "description": "Health check"},
+            {"path": "/metrics", "method": "GET", "description": "Prometheus metrics"},
         ],
     }
 
 
 @app.get("/health")
 async def health() -> dict:
+    ENDPOINT_CALLS.labels(endpoint="/health").inc()
     uptime = get_uptime()
     return {
         "status": "healthy",
@@ -182,6 +245,12 @@ async def health() -> dict:
     }
 
 
+@app.get("/metrics")
+async def metrics() -> Response:
+    ENDPOINT_CALLS.labels(endpoint="/metrics").inc()
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 if __name__ == "__main__":
     logger.info("Starting app on %s:%s (debug=%s)", HOST, PORT, DEBUG)
-    uvicorn.run("app:app", host=HOST, port=PORT, reload=DEBUG)
+    uvicorn.run(app, host=HOST, port=PORT, reload=DEBUG)
