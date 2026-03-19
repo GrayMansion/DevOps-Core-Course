@@ -41,3 +41,20 @@ def test_404_json():
     assert r.status_code == 404
     data = r.json()
     assert data["error"] == "Not Found"
+
+
+def test_metrics_endpoint():
+    client.get("/")
+    client.get("/health")
+
+    r = client.get("/metrics")
+    assert r.status_code == 200
+    assert "text/plain" in r.headers.get("content-type", "")
+
+    body = r.text
+    assert "http_requests_total" in body
+    assert "http_request_duration_seconds" in body
+    assert "http_requests_in_progress" in body
+    assert "devops_info_endpoint_calls_total" in body
+    assert 'endpoint="/"' in body
+    assert 'endpoint="/health"' in body
