@@ -17,10 +17,15 @@ spec:
       {{- include "devops-info.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- if .Values.vault.enabled }}
+      annotations:
+        {{- include "devops-info.vaultAnnotations" . | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "devops-info.selectorLabels" . | nindent 8 }}
         component: api
     spec:
+      serviceAccountName: {{ include "devops-info.serviceAccountName" . }}
       containers:
         - name: {{ include "devops-info.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -30,10 +35,12 @@ spec:
               containerPort: {{ .Values.containerPort }}
               protocol: TCP
           env:
-            {{- range .Values.env }}
-            - name: {{ .name }}
-              value: {{ .value | quote }}
-            {{- end }}
+            {{- include "devops-info.envVars" . | nindent 12 }}
+          {{- if .Values.secret.enabled }}
+          envFrom:
+            - secretRef:
+                name: {{ include "devops-info.secretName" . }}
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           livenessProbe:

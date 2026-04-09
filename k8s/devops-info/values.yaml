@@ -24,6 +24,29 @@ env:
   - name: DEBUG
     value: "false"
 
+serviceAccount:
+  create: true
+  name: ""
+
+secret:
+  enabled: true
+  name: ""
+  data:
+    username: "change-me-user"
+    password: "change-me-password"
+
+vault:
+  enabled: false
+  role: "devops-info-role"
+  secretPath: "secret/data/myapp/config"
+  fileName: "config"
+  command: ""
+  template: |
+    {{- with secret "secret/data/myapp/config" -}}
+    APP_USERNAME={{ .Data.data.username }}
+    APP_PASSWORD={{ .Data.data.password }}
+    {{- end -}}
+
 resources:
   requests:
     cpu: 100m
