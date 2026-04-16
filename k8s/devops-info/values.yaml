@@ -23,6 +23,30 @@ env:
     value: "5000"
   - name: DEBUG
     value: "false"
+  - name: VISITS_FILE
+    value: "/data/visits"
+
+config:
+  enabled: true
+  mountPath: "/config"
+
+appConfig:
+  appName: "devops-info-service"
+  environment: "dev"
+  features:
+    enableVisitsCounter: true
+    includeSystemInfo: true
+
+configEnv:
+  APP_ENV: "dev"
+  LOG_LEVEL: "info"
+  FEATURE_VISITS: "true"
+
+persistence:
+  enabled: true
+  mountPath: "/data"
+  size: 100Mi
+  storageClass: ""
 
 serviceAccount:
   create: true
@@ -82,9 +106,13 @@ probes:
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
+  runAsNonRoot: true
   capabilities:
     drop:
       - ALL
+
+podSecurityContext:
+  fsGroup: 1000
 
 hooks:
   enabled: true

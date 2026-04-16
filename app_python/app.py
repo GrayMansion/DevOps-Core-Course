@@ -9,6 +9,8 @@ import os
 import platform
 import socket
 import time
+from pathlib import Path
+from threading import Lock
 from datetime import datetime, timezone
 
 import uvicorn
@@ -24,6 +26,7 @@ HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5000"))
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 LOG_FORMAT = os.getenv("LOG_FORMAT", "text")  # "json" for structured logging
+VISITS_FILE = os.getenv("VISITS_FILE", "./data/visits")
 
 
 # -------------------------
@@ -97,6 +100,35 @@ SYSTEM_INFO_DURATION_SECONDS = Histogram(
     "System info collection duration in seconds",
 )
 
+VISITS_LOCK = Lock()
+
+
+def read_visits() -> int:
+    visits_path = Path(VISITS_FILE)
+    try:
+        raw_value = visits_path.read_text(encoding="utf-8").strip()
+        return int(raw_value) if raw_value else 0
+    except FileNotFoundError:
+        return 0
+    except ValueError:
+        logger.warning("Invalid visits counter content in %s, resetting to 0", visits_path)
+        return 0
+
+
+def write_visits(value: int) -> int:
+    visits_path = Path(VISITS_FILE)
+    visits_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = visits_path.with_name(f"{visits_path.name}.tmp")
+    tmp_path.write_text(str(value), encoding="utf-8")
+    tmp_path.replace(visits_path)
+    return value
+
+
+def increment_visits() -> int:
+    with VISITS_LOCK:
+        visits = read_visits() + 1
+        return write_visits(visits)
+
 
 def iso_utc_now() -> str:
     # Example desired format: 2026-01-07T14:30:00.000Z
@@ -134,6 +166,14 @@ def get_system_info() -> dict:
         "cpu_count": os.cpu_count() or 1,
         "python_version": platform.python_version(),
     }
+
+
+@app.on_event("startup")
+async def initialize_visits_counter() -> None:
+    with VISITS_LOCK:
+        current_visits = read_visits()
+        write_visits(current_visits)
+    logger.info("Visits counter initialized at %d in %s", current_visits, VISITS_FILE)
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -202,6 +242,7 @@ async def log_requests(request: Request, call_next):
 @app.get("/")
 async def index(request: Request) -> dict:
     ENDPOINT_CALLS.labels(endpoint="/").inc()
+    visits = increment_visits()
     uptime = get_uptime()
     with SYSTEM_INFO_DURATION_SECONDS.time():
         system_info = get_system_info()
@@ -226,12 +267,23 @@ async def index(request: Request) -> dict:
             "method": request.method,
             "path": request.url.path,
         },
+        "stats": {
+            "visits": visits,
+        },
         "endpoints": [
             {"path": "/", "method": "GET", "description": "Service information"},
+            {"path": "/visits", "method": "GET", "description": "Current visits count"},
             {"path": "/health", "method": "GET", "description": "Health check"},
             {"path": "/metrics", "method": "GET", "description": "Prometheus metrics"},
         ],
     }
+
+
+@app.get("/visits")
+async def visits() -> dict:
+    ENDPOINT_CALLS.labels(endpoint="/visits").inc()
+    with VISITS_LOCK:
+        return {"visits": read_visits()}
 
 
 @app.get("/health")

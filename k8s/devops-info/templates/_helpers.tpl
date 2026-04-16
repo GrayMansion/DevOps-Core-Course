@@ -22,6 +22,18 @@
 {{- end -}}
 {{- end -}}
 
+{{- define "devops-info.fileConfigMapName" -}}
+{{- printf "%s-config" (include "devops-info.fullname" .) -}}
+{{- end -}}
+
+{{- define "devops-info.envConfigMapName" -}}
+{{- printf "%s-env" (include "devops-info.fullname" .) -}}
+{{- end -}}
+
+{{- define "devops-info.pvcName" -}}
+{{- printf "%s-data" (include "devops-info.fullname" .) -}}
+{{- end -}}
+
 {{- define "devops-info.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create -}}
 {{- default (include "devops-info.fullname" .) .Values.serviceAccount.name -}}
