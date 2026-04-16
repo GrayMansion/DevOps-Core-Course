@@ -23,6 +23,53 @@ env:
     value: "5000"
   - name: DEBUG
     value: "false"
+  - name: VISITS_FILE
+    value: "/data/visits"
+
+config:
+  enabled: true
+  mountPath: "/config"
+
+appConfig:
+  appName: "devops-info-service"
+  environment: "dev"
+  features:
+    enableVisitsCounter: true
+    includeSystemInfo: true
+
+configEnv:
+  APP_ENV: "dev"
+  LOG_LEVEL: "info"
+  FEATURE_VISITS: "true"
+
+persistence:
+  enabled: true
+  mountPath: "/data"
+  size: 100Mi
+  storageClass: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+secret:
+  enabled: true
+  name: ""
+  data:
+    username: "change-me-user"
+    password: "change-me-password"
+
+vault:
+  enabled: false
+  role: "devops-info-role"
+  secretPath: "secret/data/myapp/config"
+  fileName: "config"
+  command: ""
+  template: |
+    {{- with secret "secret/data/myapp/config" -}}
+    APP_USERNAME={{ .Data.data.username }}
+    APP_PASSWORD={{ .Data.data.password }}
+    {{- end -}}
 
 resources:
   requests:
@@ -59,9 +106,13 @@ probes:
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
+  runAsNonRoot: true
   capabilities:
     drop:
       - ALL
+
+podSecurityContext:
+  fsGroup: 1000
 
 hooks:
   enabled: true

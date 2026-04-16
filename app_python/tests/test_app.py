@@ -1,8 +1,40 @@
+import app as app_module
+import pytest
 from fastapi.testclient import TestClient
 
 from app import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def isolated_visits_file(tmp_path, request):
+    app_module.VISITS_FILE = str(tmp_path / f"{request.node.name}.visits")
+
+
+def test_visits_counter_persists_in_file(tmp_path):
+    visits_file = tmp_path / "visits"
+    app_module.VISITS_FILE = str(visits_file)
+
+    first = client.get("/")
+    second = client.get("/")
+    assert first.status_code == 200
+    assert second.status_code == 200
+
+    assert first.json()["stats"]["visits"] == 1
+    assert second.json()["stats"]["visits"] == 2
+    assert visits_file.read_text(encoding="utf-8").strip() == "2"
+
+
+def test_visits_endpoint_reads_current_count(tmp_path):
+    visits_file = tmp_path / "visits"
+    visits_file.write_text("7", encoding="utf-8")
+    app_module.VISITS_FILE = str(visits_file)
+
+    response = client.get("/visits")
+    assert response.status_code == 200
+    assert response.json() == {"visits": 7}
+
 
 def test_root_structure():
     r = client.get("/", headers={"User-Agent": "pytest"})
@@ -20,13 +52,15 @@ def test_root_structure():
 
     assert isinstance(data["runtime"]["uptime_seconds"], int)
     assert data["runtime"]["timezone"] == "UTC"
+    assert isinstance(data["stats"]["visits"], int)
 
     assert data["request"]["method"] == "GET"
     assert data["request"]["path"] == "/"
     assert data["request"]["user_agent"] is not None
 
     paths = {e["path"] for e in data["endpoints"]}
-    assert "/" in paths and "/health" in paths
+    assert "/" in paths and "/health" in paths and "/visits" in paths
+
 
 def test_health():
     r = client.get("/health")
@@ -35,6 +69,7 @@ def test_health():
     assert data["status"] == "healthy"
     assert isinstance(data["uptime_seconds"], int)
     assert "timestamp" in data
+
 
 def test_404_json():
     r = client.get("/nope")
@@ -46,6 +81,7 @@ def test_404_json():
 def test_metrics_endpoint():
     client.get("/")
     client.get("/health")
+    client.get("/visits")
 
     r = client.get("/metrics")
     assert r.status_code == 200
@@ -58,3 +94,4 @@ def test_metrics_endpoint():
     assert "devops_info_endpoint_calls_total" in body
     assert 'endpoint="/"' in body
     assert 'endpoint="/health"' in body
+    assert 'endpoint="/visits"' in body
