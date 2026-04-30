@@ -3,6 +3,31 @@ fullnameOverride: ""
 
 replicaCount: 3
 
+deployment:
+  enabled: false
+
+rollout:
+  enabled: true
+  strategy: canary
+  canary:
+    analysis:
+      enabled: false
+  blueGreen:
+    autoPromotionEnabled: false
+    autoPromotionSeconds: null
+    activeServiceName: ""
+    previewServiceName: ""
+
+analysisTemplate:
+  enabled: false
+  name: ""
+  urlPath: "/health"
+  jsonPath: "{$.status}"
+  successCondition: 'result == "healthy"'
+  interval: 10s
+  count: 3
+  failureLimit: 1
+
 image:
   repository: graymansion/devops-info-service
   tag: "lab02"

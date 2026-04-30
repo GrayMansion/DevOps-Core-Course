@@ -1,0 +1,12 @@
+deployment:
+  enabled: false
+
+rollout:
+  enabled: true
+  strategy: canary
+  canary:
+    analysis:
+      enabled: true
+
+analysisTemplate:
+  enabled: true

@@ -1,0 +1,19 @@
+{{- if .Values.analysisTemplate.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "devops-info.analysisTemplateName" . }}
+  labels:
+    {{- include "devops-info.labels" . | nindent 4 }}
+spec:
+  metrics:
+    - name: webcheck
+      provider:
+        web:
+          url: http://{{ include "devops-info.activeServiceName" . }}.{{ .Release.Namespace }}.svc{{ .Values.analysisTemplate.urlPath }}
+          jsonPath: {{ .Values.analysisTemplate.jsonPath | quote }}
+      successCondition: {{ .Values.analysisTemplate.successCondition | quote }}
+      interval: {{ .Values.analysisTemplate.interval }}
+      count: {{ .Values.analysisTemplate.count }}
+      failureLimit: {{ .Values.analysisTemplate.failureLimit }}
+{{- end }}

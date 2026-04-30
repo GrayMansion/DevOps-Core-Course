@@ -49,6 +49,30 @@
 {{- end }}
 {{- end -}}
 
+{{- define "devops-info.activeServiceName" -}}
+{{- if .Values.rollout.blueGreen.activeServiceName -}}
+{{- .Values.rollout.blueGreen.activeServiceName -}}
+{{- else -}}
+{{- include "devops-info.fullname" . -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "devops-info.previewServiceName" -}}
+{{- if .Values.rollout.blueGreen.previewServiceName -}}
+{{- .Values.rollout.blueGreen.previewServiceName -}}
+{{- else -}}
+{{- printf "%s-preview" (include "devops-info.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "devops-info.analysisTemplateName" -}}
+{{- if .Values.analysisTemplate.name -}}
+{{- .Values.analysisTemplate.name -}}
+{{- else -}}
+{{- printf "%s-success-rate" (include "devops-info.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "devops-info.vaultAnnotations" -}}
 {{- if .Values.vault.enabled }}
 vault.hashicorp.com/agent-inject: "true"
