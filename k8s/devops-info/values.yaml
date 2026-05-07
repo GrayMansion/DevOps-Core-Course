@@ -6,8 +6,14 @@ replicaCount: 3
 deployment:
   enabled: false
 
-rollout:
+statefulset:
   enabled: true
+  updateStrategy:
+    type: RollingUpdate
+    partition: 0
+
+rollout:
+  enabled: false
   strategy: canary
   canary:
     analysis:
