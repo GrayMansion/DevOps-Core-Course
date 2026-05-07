@@ -34,6 +34,10 @@
 {{- printf "%s-data" (include "devops-info.fullname" .) -}}
 {{- end -}}
 
+{{- define "devops-info.headlessServiceName" -}}
+{{- printf "%s-headless" (include "devops-info.fullname" .) -}}
+{{- end -}}
+
 {{- define "devops-info.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create -}}
 {{- default (include "devops-info.fullname" .) .Values.serviceAccount.name -}}
